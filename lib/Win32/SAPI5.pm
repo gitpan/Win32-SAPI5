@@ -3,7 +3,7 @@ package Win32::SAPI5;
 use strict;
 use warnings;
 use Win32::OLE;
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 our (%CLSID, $AUTOLOAD);
 BEGIN
 {
@@ -59,12 +59,15 @@ sub AUTOLOAD
     return $self->{_object}->$auto(@params);
 }
 
+sub DESTROY
+{
+}
+
 package Win32::SAPI5::SpVoice;
 use base 'Win32::SAPI5';
 use Win32::Locale;
 use Locale::Country;
 use Locale::Language;
-use Win32::TieRegistry;
 
 sub GetInstalledLanguages
 {
@@ -106,11 +109,11 @@ sub GetInstalledVoices
             my ($t1, $t2) = split(/-/,$lang);
             my $key = code2language($t1);
             $key.= " (".code2country($t2).")" if defined code2country($t2);
-            push @r, $tokens->Item($i)->GetDescription if $language eq $key;
+            push @r, ($tokens->Item($i)->GetDescription||$tokens->Item($i)->GetAttribute('Name')) if $language eq $key;
         }
         else
         {
-            push @r, $tokens->Item($i)->GetDescription unless $language;
+            push @r, ($tokens->Item($i)->GetDescription||$tokens->Item($i)->GetAttribute('Name')) unless $language;
         }
     }
     return @r;
@@ -130,7 +133,7 @@ sub Language2LanguageID
         my ($t1, $t2) = split(/-/,$lang);
         my $key = code2language($t1);
         $key.= " (".code2country($t2).")" if code2country($t2);
-        return $langid if $language eq $key;
+        return hex("0x$langid") if $language eq $key;
     }
 }
 
@@ -141,11 +144,9 @@ sub Voice2ModeID
     my $tokens = $self->GetVoices;
     for (my $i = 0; $i < $tokens->Count; $i++)
     {
-        if ($voice eq $tokens->Item($i)->GetDescription)
+        if ($voice eq ($tokens->Item($i)->GetDescription||$tokens->Item($i)->GetAttribute('Name')))
         {
-            my $clsid = $Registry->{$tokens->Item($i)->Id.'\CLSID'};
-            $clsid =~ s/[{}]//g;
-            return $clsid;
+            return $tokens->Item($i)->Id
         }
     }
 }

@@ -9,5 +9,9 @@ WriteMakefile(
     VERSION_FROM => 'lib/Win32/SAPI5.pm', # finds $VERSION
     AUTHOR       => 'Jouke Visser <jouke@cpan.org>',
     ABSTRACT_FROM=> 'lib/Win32/SAPI5.pm',
-    PREREQ_PM    => {   'Win32::OLE'            => 0}
+    PREREQ_PM    => {   'Win32::OLE'            => 0,
+                        'Win32::Locale'         => 0,
+                        'Locale::Country'       => 0,
+                        'Locale::Language'      => 0
+                     }
 );
