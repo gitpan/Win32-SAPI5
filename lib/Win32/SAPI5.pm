@@ -3,7 +3,7 @@ package Win32::SAPI5;
 use strict;
 use warnings;
 use Win32::OLE;
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 our (%CLSID, $AUTOLOAD);
 BEGIN
 {
@@ -57,6 +57,12 @@ sub AUTOLOAD
     my @params = @_;
     (my $auto = $AUTOLOAD) =~ s/.*:://;
     return $self->{_object}->$auto(@params);
+}
+
+sub GetObject
+{
+    my $self = shift;
+    return $self->{_object}
 }
 
 sub DESTROY
@@ -289,6 +295,27 @@ find the 5.1 version)
 
 See the Microsoft Speech API 5.1 documentation that comes with the SDK, except
 for the following utility methods available for Win32::SAPI5::SpVoice:
+
+=head2 Win32::SAPI5::*
+
+=over 4
+
+=item GetObject
+
+All classes support the GetObject method, which will return the actual
+Win32::OLE object. This can be useful when you need to pass the object itself
+as a parameter to a method of another object.
+
+for example:
+
+  # setup Microsoft Speech API
+  my $stream = Win32::SAPI5::SpFileStream->new();
+  $stream->Open($wav, 3, 0); # 3 = SSFMCreateForWrite
+
+  my $voice = Win32::SAPI5::SpVoice->new();
+  $voice->SetProperty(AudioOutputStream => $stream->GetObject);
+
+=back
 
 =head2 Win32::SAPI5::SpVoice
 

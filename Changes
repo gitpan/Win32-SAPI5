@@ -9,3 +9,5 @@ Revision history for Perl extension Win32::SAPI5.
 	- Made a workaround to show names of voices by Cepstral
 	  (these return empty strings on GetDescription, but
 	  do return their name on GetAttribute('Name')
+0.04  Fri October 1 2004
+	- Added the GetObject method to all classes (thanks to Tatsuhiko Miyagawa)
