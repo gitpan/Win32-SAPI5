@@ -3,7 +3,7 @@ package Win32::SAPI5;
 use strict;
 use warnings;
 use Win32::OLE;
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 our (%CLSID, $AUTOLOAD);
 BEGIN
 {
@@ -42,29 +42,113 @@ BEGIN
 
 sub new
 {
- my $proto = shift;
- my $class = ref($proto) || $proto;
- my $self = {};
- (my $subclass = $proto) =~ s/.*:://;
- $self->{_object} = Win32::OLE->new($CLSID{$subclass}) || return undef;
- bless $self, $class;
- return $self;
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my $self = {};
+    (my $subclass = $proto) =~ s/.*:://;
+    $self->{_object} = Win32::OLE->new($CLSID{$subclass}) || return undef;
+    bless $self, $class;
+    return $self;
 }
 
 sub AUTOLOAD
 {
- my $self = shift;
- my $auto;
- ($auto = $AUTOLOAD) =~ s/.*:://;
- my $params = '';
- $params .= "'$_'," for grep{defined $_} @_;
- chop($params);
- my $call = '$self->{_object}->'."$auto($params)";
- return eval($call);
+    my $self = shift;
+    my @params = @_;
+    (my $auto = $AUTOLOAD) =~ s/.*:://;
+    return $self->{_object}->$auto(@params);
 }
 
 package Win32::SAPI5::SpVoice;
 use base 'Win32::SAPI5';
+use Win32::Locale;
+use Locale::Country;
+use Locale::Language;
+use Win32::TieRegistry;
+
+sub GetInstalledLanguages
+{
+    my $self = shift;
+    my %r;
+    my $tokens = $self->GetVoices;
+    for (my $i = 0; $i < $tokens->Count; $i++)
+    {
+        my ($lang, undef) = split(/;/,$tokens->Item($i)->GetAttribute('Language'));
+        if ($lang)
+        {
+            $lang = Win32::Locale::get_language(hex("0x$lang"));
+            my ($t1, $t2) = split(/-/,$lang);
+            my $key = code2language($t1);
+            $key.= " (".code2country($t2).")" if defined code2country($t2);
+            $r{$key}++;
+        }
+        else
+        {
+            $r{'unknown'}++
+        }
+    }
+    return keys %r;
+}
+
+sub GetInstalledVoices
+{
+    my $self = shift;
+    my $language = shift;
+    $language = '' if $language eq 'unknown';
+    my @r;
+    my $tokens = $self->GetVoices;
+    for (my $i = 0; $i < $tokens->Count; $i++)
+    {
+        my ($lang, undef) = split(/;/,$tokens->Item($i)->GetAttribute('Language'));
+        $lang = Win32::Locale::get_language(hex("0x$lang"));
+        if ($lang)
+        {
+            my ($t1, $t2) = split(/-/,$lang);
+            my $key = code2language($t1);
+            $key.= " (".code2country($t2).")" if defined code2country($t2);
+            push @r, $tokens->Item($i)->GetDescription if $language eq $key;
+        }
+        else
+        {
+            push @r, $tokens->Item($i)->GetDescription unless $language;
+        }
+    }
+    return @r;
+}
+
+sub Language2LanguageID
+{
+    my $self = shift;
+    my $language = shift;
+    $language = '' if $language eq 'unknown';
+    return '0' unless $language;
+    my $tokens = $self->GetVoices;
+    for (my $i = 0; $i < $tokens->Count; $i++)
+    {
+        my ($langid, undef) = split(/;/,$tokens->Item($i)->GetAttribute('Language'));
+        my $lang = Win32::Locale::get_language(hex("0x$langid"));
+        my ($t1, $t2) = split(/-/,$lang);
+        my $key = code2language($t1);
+        $key.= " (".code2country($t2).")" if code2country($t2);
+        return $langid if $language eq $key;
+    }
+}
+
+sub Voice2ModeID
+{
+    my $self = shift;
+    my $voice = shift;
+    my $tokens = $self->GetVoices;
+    for (my $i = 0; $i < $tokens->Count; $i++)
+    {
+        if ($voice eq $tokens->Item($i)->GetDescription)
+        {
+            my $clsid = $Registry->{$tokens->Item($i)->Id.'\CLSID'};
+            $clsid =~ s/[{}]//g;
+            return $clsid;
+        }
+    }
+}
 
 package Win32::SAPI5::SpNotifyTranslator;
 use base 'Win32::SAPI5';
@@ -202,7 +286,44 @@ find the 5.1 version)
 
 =head1 USAGE
 
-See the Microsoft Speech API 5.1 documentation that comes with the SDK
+See the Microsoft Speech API 5.1 documentation that comes with the SDK, except
+for the following utility methods available for Win32::SAPI5::SpVoice:
+
+=head2 Win32::SAPI5::SpVoice
+
+To be somewhat compatible with Win32::SAPI4::VoiceText, I've added the
+utilitymethods that exist there to Win32::SAPI5::SpVoice, to be able to
+apply the same code to this API.
+
+=over 4
+
+=item GetInstalledLanguages
+
+This method returns a list of all installed languages with their
+countryname. It may look like ('Dutch (Netherlands)', 'Dutch (Belgium)',
+'English (United States)', 'Portuguese (Brazil)'). Some speechengines
+might not return a languageID. In this
+case 'unknown' is returned.
+
+=item GetInstalledVoices
+
+This method takes a language as returned by GetInstalledLanguages and returns
+a list of all installed voices with their language.
+It may look like ('Adult female (Dutch)', 'Microsoft Sam (US English)')
+
+=item Language2LanguageID
+
+This method takes a language as returned by GetInstalledLanguages and
+returns the corresponding LanguageID that SpVoice knows. This also
+converts the 'unknown' that might be returned by GetInstalledLanguages
+back to a 0.
+
+=item Voice2ModeID
+
+This method takes a voice as returned by GetInstalledVoices and
+returns the corresponding ModeID that SpVoice knows.
+
+=back
 
 =head1 SUPPORT
 
