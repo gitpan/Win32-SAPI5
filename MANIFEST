@@ -1,0 +1,10 @@
+LICENSE
+Changes
+Makefile.PL
+README
+MANIFEST.SKIP
+lib/Win32/SAPI5.pm
+t/01_load.t
+t/spvoice.t
+MANIFEST
+META.yml                                 Module meta-data (added by MakeMaker)
