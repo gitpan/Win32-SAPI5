@@ -3,7 +3,7 @@ package Win32::SAPI5;
 use strict;
 use warnings;
 use Win32::OLE;
-our $VERSION = 0.04;
+our $VERSION = 0.05;
 our (%CLSID, $AUTOLOAD);
 BEGIN
 {
@@ -299,6 +299,10 @@ for the following utility methods available for Win32::SAPI5::SpVoice:
 =head2 Win32::SAPI5::*
 
 =over 4
+
+=item new
+
+This is the constructor for each and every Win32::SAPI5 subclass. It does not take any parameters
 
 =item GetObject
 
